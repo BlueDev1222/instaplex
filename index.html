@@ -13,16 +13,73 @@ body {
     color: #e5e7eb;
 }
 
+/* HEADER */
 header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
     padding: 20px;
-    font-size: 22px;
-    font-weight: bold;
-    color: #38bdf8;
     border-bottom: 1px solid #1f2933;
 }
 
+.logo {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    background: #38bdf8;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    color: #020617;
+}
+
+.site-title {
+    font-size: 22px;
+    font-weight: bold;
+    color: #38bdf8;
+}
+
+/* CONTROLS */
+.controls {
+    padding: 20px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.search {
+    flex: 1;
+    min-width: 220px;
+}
+
+.search input {
+    width: 100%;
+    padding: 10px 14px;
+    border-radius: 6px;
+    border: 1px solid #1f2933;
+    background: #111827;
+    color: #e5e7eb;
+}
+
+.categories button {
+    padding: 8px 14px;
+    background: #111827;
+    border: 1px solid #1f2933;
+    border-radius: 6px;
+    color: #e5e7eb;
+    cursor: pointer;
+}
+
+.categories button.active,
+.categories button:hover {
+    background: #38bdf8;
+    color: #020617;
+}
+
+/* CARDS */
 main {
-    padding: 40px;
+    padding: 20px 40px 40px;
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
     gap: 25px;
@@ -72,34 +129,83 @@ footer {
 
 <body>
 
-<header>School Bypass</header>
+<header>
+    <div class="logo">SB</div>
+    <div class="site-title">School Bypass</div>
+</header>
 
-<main>
+<div class="controls">
+    <div class="search">
+        <input type="text" id="searchInput" placeholder="Search...">
+    </div>
 
-    <!-- ADD MORE CARDS LIKE THIS -->
-    <div class="card">
+    <div class="categories">
+        <button class="active" data-category="all">All</button>
+        <button data-category="browser">Browser</button>
+        <button data-category="network">Network</button>
+        <button data-category="tools">Tools</button>
+    </div>
+</div>
+
+<main id="cards">
+
+    <!-- ADD MORE CARDS -->
+    <div class="card" data-title="Example Method" data-category="tools">
         <h2>Example Method</h2>
-        <p>This is an example entry.</p>
+        <p>Template example entry.</p>
         <a href="template.html?id=example">Open</a>
     </div>
 
-    <div class="card">
+    <div class="card" data-title="Method One" data-category="browser">
         <h2>Method One</h2>
-        <p>Description for method one.</p>
+        <p>Browser-based method layout.</p>
         <a href="template.html?id=method1">Open</a>
     </div>
 
-    <div class="card">
+    <div class="card" data-title="Method Two" data-category="network">
         <h2>Method Two</h2>
-        <p>Description for method two.</p>
+        <p>Network-related example layout.</p>
         <a href="template.html?id=method2">Open</a>
     </div>
 
 </main>
 
 <footer>
-© 2026 School Bypass • All Rights Reserved
+GitHub Pages • Search & Categories Enabled
 </footer>
+
+<script>
+const searchInput = document.getElementById("searchInput");
+const cards = document.querySelectorAll(".card");
+const categoryButtons = document.querySelectorAll(".categories button");
+
+let activeCategory = "all";
+
+searchInput.addEventListener("input", filterCards);
+
+categoryButtons.forEach(btn => {
+    btn.addEventListener("click", () => {
+        categoryButtons.forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        activeCategory = btn.dataset.category;
+        filterCards();
+    });
+});
+
+function filterCards() {
+    const search = searchInput.value.toLowerCase();
+
+    cards.forEach(card => {
+        const title = card.dataset.title.toLowerCase();
+        const category = card.dataset.category;
+
+        const matchesSearch = title.includes(search);
+        const matchesCategory = activeCategory === "all" || category === activeCategory;
+
+        card.style.display = (matchesSearch && matchesCategory) ? "block" : "none";
+    });
+}
+</script>
 
 </body>
 </html>
