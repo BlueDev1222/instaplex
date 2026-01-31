@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>PrimeMines Mega</title>
+<title>PrimeMines Mega v2</title>
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;font-family:'Poppins',sans-serif;}
@@ -34,20 +34,20 @@ button{padding:10px 16px;border-radius:10px;border:none;font-weight:600;cursor:p
 .revealed.rainbow{background:linear-gradient(90deg,red,orange,yellow,green,blue,purple);box-shadow:0 0 22px rgba(255,255,255,0.9);animation:pop 0.3s ease;}
 .revealed.diamond{background:linear-gradient(135deg,#0ff,#4dd);box-shadow:0 0 30px #0ff,0 0 60px #4dd;animation:pop 0.5s ease;font-size:28px;}
 @keyframes pop{0%{transform:scale(0.6);}100%{transform:scale(1);}}
-@keyframes shake{0%,100%{transform:translateX(0);}25%{transform:translateX(-4px);}75%{transform:translateX(4px);}}
+@keyframes shake{0%,100%{transform:translateX(0);}25%{transform:translateX(-4px);}75%{transform:translateX(4px);} }
 #confetti{position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:9999;}
 .shop{position:fixed;inset:0;background:rgba(0,0,0,0.6);display:none;align-items:center;justify-content:center;}
 .shop-content{background:#0f172a;padding:25px;border-radius:16px;box-shadow:0 0 25px rgba(255,215,0,0.4);text-align:center;}
 .shop-content h2{margin-top:0;}
 .coin-pack{background:linear-gradient(90deg,#22d3ee,#818cf8);margin:8px;padding:10px 14px;border-radius:10px;cursor:pointer;font-weight:600;color:black;}
 .close-shop{margin-top:10px;background:#ef4444;color:white;}
-.leaderboard{margin-top:15px;text-align:left;padding:10px;background:rgba(0,0,0,0.2);border-radius:10px;}
+.leaderboard{margin-top:15px;text-align:left;padding:10px;background:rgba(0,0,0,0.2);border-radius:10px;min-height:100px;}
 footer{margin-top:35px;padding:15px;font-size:13px;color:#64748b;}
 </style>
 </head>
 <body>
 
-<header class="logo">PrimeMines Mega</header>
+<header class="logo">PrimeMines Mega v2</header>
 
 <div class="container">
 <div class="panel">
@@ -76,17 +76,13 @@ footer{margin-top:35px;padding:15px;font-size:13px;color:#64748b;}
 
     <div class="leaderboard" id="leaderboard">
         <strong>Leaderboard (Fake)</strong><br>
-        Player1: $12,345<br>
-        Player2: $9,876<br>
-        Player3: $7,500
+        Loading...
     </div>
 </div>
 </div>
 
-<!-- CONFETTI -->
 <canvas id="confetti"></canvas>
 
-<!-- SHOP -->
 <div class="shop" id="shop">
   <div class="shop-content">
     <h2>Coin Shop (Demo)</h2>
@@ -100,18 +96,50 @@ footer{margin-top:35px;padding:15px;font-size:13px;color:#64748b;}
 <footer>Demo version • Fake currency • No real purchases</footer>
 
 <script>
-// ----- GAME VARIABLES -----
-let balance=1000,streak=0,minePositions=[],revealedTiles=0,gameActive=false,betAmount=0,multiplier=1;
+// ----- SAVE & LOAD -----
+let saveData = JSON.parse(localStorage.getItem("PrimeMinesData")) || {balance:1000,streak:0};
+let balance = saveData.balance;
+let streak = saveData.streak;
 
-// ----- BALANCE & STATS -----
+// ----- GAME -----
+let minePositions=[],revealedTiles=0,gameActive=false,betAmount=0,multiplier=1;
+
+// ----- UPDATE UI -----
 function updateBalanceDisplay(){document.getElementById("balance").textContent=balance.toFixed(2);}
 function updateStreakDisplay(){document.getElementById("streak").textContent=streak;document.body.classList.toggle("hot",streak>=3);}
-function updateStats(){document.getElementById("multiplier").textContent=multiplier.toFixed(2)+"x";document.getElementById("winnings").textContent=(betAmount*multiplier).toFixed(2);}
+function updateStats(){document.getElementById("multiplier").textContent=multiplier.toFixed(2)+"x";document.getElementById("winnings").textContent=(betAmount*multiplier).toFixed(2);saveGame();}
+function saveGame(){localStorage.setItem("PrimeMinesData",JSON.stringify({balance:balance,streak:streak}));}
 
 // ----- SHOP -----
 function openShop(){document.getElementById("shop").style.display="flex";}
 function closeShop(){document.getElementById("shop").style.display="none";}
-function addCoins(amount){balance+=amount;updateBalanceDisplay();}
+function addCoins(amount){balance+=amount;updateBalanceDisplay();saveGame();}
+
+// ----- LEADERBOARD -----
+let fakePlayers=["BlueDev","LuckyCat","GamerX","Nova","Star","Pixel","MegaPro"];
+function updateLeaderboard(){
+    const lb=document.getElementById("leaderboard");
+    lb.innerHTML="<strong>Leaderboard (Fake)</strong><br>";
+    fakePlayers.forEach(name=>{
+        let money=1000+Math.floor(Math.random()*9000);
+        animateMoney(lb,name,money);
+    });
+    // add player at bottom
+    animateMoney(lb,"You",balance,true);
+}
+function animateMoney(container,name,target,player=false){
+    let current=0;
+    const line=document.createElement("div");
+    container.appendChild(line);
+    function step(){
+        current+=(target-current)/10;
+        line.textContent=`${name}: $${Math.floor(current)}`;
+        if(Math.abs(current-target)>0.5) requestAnimationFrame(step);
+        else line.textContent=`${name}: $${Math.floor(target)}`;
+    }
+    step();
+}
+updateLeaderboard();
 
 // ----- GAME -----
 function startGame(){
@@ -128,14 +156,11 @@ function startGame(){
     for(let i=0;i<25;i++){
         const tile=document.createElement("div");
         tile.classList.add("tile");tile.dataset.index=i;tile.onclick=()=>revealTile(tile);
-
-        // Rarity tiles
         const rand=Math.random();
         if(rand<0.01)tile.dataset.rarity="diamond";
         else if(rand<0.05)tile.dataset.rarity="rainbow";
         else if(rand<0.15)tile.dataset.rarity="purple";
         else if(rand<0.30)tile.dataset.rarity="gold";
-
         grid.appendChild(tile);
     }
     updateStats();
@@ -168,8 +193,8 @@ function cashOut(){if(!gameActive||revealedTiles===0)return;gameOver(true);}
 function gameOver(cashedOut){
     gameActive=false;
     document.querySelectorAll(".tile").forEach((tile,i)=>{if(minePositions.includes(i)){tile.classList.add("revealed","mine");tile.textContent="💣";}});
-    if(cashedOut){let winnings=betAmount*multiplier;balance+=winnings;streak++;updateBalanceDisplay();updateStreakDisplay();setTimeout(()=>alert("Cashed out $"+winnings.toFixed(2)),300);}
-    else{setTimeout(()=>alert("Boom! You hit a mine."),300);}
+    if(cashedOut){let winnings=betAmount*multiplier;balance+=winnings;streak++;updateBalanceDisplay();updateStreakDisplay();updateLeaderboard();saveGame();setTimeout(()=>alert("Cashed out $"+winnings.toFixed(2)),300);}
+    else{updateLeaderboard();saveGame();setTimeout(()=>alert("Boom! You hit a mine."),300);}
 }
 
 // ----- CONFETTI -----
