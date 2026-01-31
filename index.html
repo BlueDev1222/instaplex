@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>PrimeMines Mega v2</title>
+<title>PrimeMines Mega v3</title>
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;font-family:'Poppins',sans-serif;}
@@ -41,13 +41,14 @@ button{padding:10px 16px;border-radius:10px;border:none;font-weight:600;cursor:p
 .shop-content h2{margin-top:0;}
 .coin-pack{background:linear-gradient(90deg,#22d3ee,#818cf8);margin:8px;padding:10px 14px;border-radius:10px;cursor:pointer;font-weight:600;color:black;}
 .close-shop{margin-top:10px;background:#ef4444;color:white;}
-.leaderboard{margin-top:15px;text-align:left;padding:10px;background:rgba(0,0,0,0.2);border-radius:10px;min-height:100px;}
+.leaderboard{margin-top:15px;text-align:left;padding:10px;background:rgba(0,0,0,0.2);border-radius:10px;min-height:120px;}
+.toast{position:fixed;top:20px;right:20px;padding:12px 18px;background:linear-gradient(90deg,#facc15,#f97316);color:black;border-radius:12px;font-weight:600;opacity:0;pointer-events:none;transition:0.4s;}
 footer{margin-top:35px;padding:15px;font-size:13px;color:#64748b;}
 </style>
 </head>
 <body>
 
-<header class="logo">PrimeMines Mega v2</header>
+<header class="logo">PrimeMines Mega v3</header>
 
 <div class="container">
 <div class="panel">
@@ -75,8 +76,7 @@ footer{margin-top:35px;padding:15px;font-size:13px;color:#64748b;}
     <div class="grid" id="grid"></div>
 
     <div class="leaderboard" id="leaderboard">
-        <strong>Leaderboard (Fake)</strong><br>
-        Loading...
+        <strong>Leaderboard</strong><br>Loading...
     </div>
 </div>
 </div>
@@ -93,39 +93,56 @@ footer{margin-top:35px;padding:15px;font-size:13px;color:#64748b;}
   </div>
 </div>
 
+<div id="toast" class="toast"></div>
+
 <footer>Demo version • Fake currency • No real purchases</footer>
 
 <script>
 // ----- SAVE & LOAD -----
-let saveData = JSON.parse(localStorage.getItem("PrimeMinesData")) || {balance:1000,streak:0};
+let saveData = JSON.parse(localStorage.getItem("PrimeMinesData")) || {balance:1000,streak:0,achievements:[]};
 let balance = saveData.balance;
 let streak = saveData.streak;
+let achievements = saveData.achievements;
 
 // ----- GAME -----
 let minePositions=[],revealedTiles=0,gameActive=false,betAmount=0,multiplier=1;
 
-// ----- UPDATE UI -----
+// ----- UI -----
 function updateBalanceDisplay(){document.getElementById("balance").textContent=balance.toFixed(2);}
 function updateStreakDisplay(){document.getElementById("streak").textContent=streak;document.body.classList.toggle("hot",streak>=3);}
 function updateStats(){document.getElementById("multiplier").textContent=multiplier.toFixed(2)+"x";document.getElementById("winnings").textContent=(betAmount*multiplier).toFixed(2);saveGame();}
-function saveGame(){localStorage.setItem("PrimeMinesData",JSON.stringify({balance:balance,streak:streak}));}
+function saveGame(){localStorage.setItem("PrimeMinesData",JSON.stringify({balance,balance,streak,achievements}));}
 
 // ----- SHOP -----
 function openShop(){document.getElementById("shop").style.display="flex";}
 function closeShop(){document.getElementById("shop").style.display="none";}
-function addCoins(amount){balance+=amount;updateBalanceDisplay();saveGame();}
+function addCoins(amount){balance+=amount;updateBalanceDisplay();showToast(`Added $${amount}`);saveGame();updateLeaderboard();}
+
+// ----- TOAST -----
+function showToast(msg){
+    const t=document.getElementById("toast");
+    t.textContent=msg;t.style.opacity=1;
+    setTimeout(()=>{t.style.opacity=0;},2000);
+}
+
+// ----- ACHIEVEMENTS -----
+function grantAchievement(name){
+    if(!achievements.includes(name)){
+        achievements.push(name);saveGame();showToast(`🏅 Achievement: ${name}`);
+    }
+}
 
 // ----- LEADERBOARD -----
 let fakePlayers=["BlueDev","LuckyCat","GamerX","Nova","Star","Pixel","MegaPro"];
 function updateLeaderboard(){
     const lb=document.getElementById("leaderboard");
-    lb.innerHTML="<strong>Leaderboard (Fake)</strong><br>";
-    fakePlayers.forEach(name=>{
-        let money=1000+Math.floor(Math.random()*9000);
-        animateMoney(lb,name,money);
+    lb.innerHTML="<strong>Leaderboard</strong><br>";
+    let allPlayers = fakePlayers.map(name=>({name,money:1000+Math.floor(Math.random()*9000)}));
+    allPlayers.push({name:"You",money:balance});
+    allPlayers.sort((a,b)=>b.money-a.money);
+    allPlayers.forEach(p=>{
+        animateMoney(lb,p.name,p.money,p.name==="You");
     });
-    // add player at bottom
-    animateMoney(lb,"You",balance,true);
 }
 function animateMoney(container,name,target,player=false){
     let current=0;
@@ -180,7 +197,7 @@ function revealTile(tile){
                 case"gold":multiplier*=1.5;tile.classList.add("gold");tile.textContent="💛";balance+=betAmount*0.5;break;
                 case"purple":multiplier*=2;tile.classList.add("purple");tile.textContent="💜";balance+=betAmount;break;
                 case"rainbow":multiplier*=3;tile.classList.add("rainbow");tile.textContent="🌈";balance+=betAmount*2;break;
-                case"diamond":multiplier*=5;tile.classList.add("diamond");tile.textContent="💎";balance+=betAmount*5;streak++;triggerConfetti();break;
+                case"diamond":multiplier*=5;tile.classList.add("diamond");tile.textContent="💎";balance+=betAmount*5;streak++;triggerConfetti();grantAchievement("Hit Diamond!");break;
             }
             updateBalanceDisplay();
         }else{tile.classList.add("safe");tile.textContent="💎";}
@@ -193,8 +210,16 @@ function cashOut(){if(!gameActive||revealedTiles===0)return;gameOver(true);}
 function gameOver(cashedOut){
     gameActive=false;
     document.querySelectorAll(".tile").forEach((tile,i)=>{if(minePositions.includes(i)){tile.classList.add("revealed","mine");tile.textContent="💣";}});
-    if(cashedOut){let winnings=betAmount*multiplier;balance+=winnings;streak++;updateBalanceDisplay();updateStreakDisplay();updateLeaderboard();saveGame();setTimeout(()=>alert("Cashed out $"+winnings.toFixed(2)),300);}
-    else{updateLeaderboard();saveGame();setTimeout(()=>alert("Boom! You hit a mine."),300);}
+    if(cashedOut){
+        let winnings=betAmount*multiplier;balance+=winnings;
+        streak++;
+        updateBalanceDisplay();updateStreakDisplay();
+        grantAchievement(`Cashed Out $${Math.floor(winnings)}`);
+        updateLeaderboard();saveGame();
+        setTimeout(()=>alert("Cashed out $"+winnings.toFixed(2)),300);
+    }else{
+        updateLeaderboard();saveGame();setTimeout(()=>alert("Boom! You hit a mine."),300);
+    }
 }
 
 // ----- CONFETTI -----
@@ -212,6 +237,8 @@ function updateConfetti(){
     requestAnimationFrame(updateConfetti);
 }
 updateConfetti();
+updateBalanceDisplay();
+updateStreakDisplay();
 </script>
 </body>
 </html>
