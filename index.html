@@ -1,93 +1,209 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<title>Matrix Terminal</title>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>YourBrand GG – Demo Games</title>
 <style>
     body {
         margin: 0;
-        overflow: hidden;
-        background: black;
+        font-family: Arial, Helvetica, sans-serif;
+        background: radial-gradient(circle at top, #0f1a14, #0b0f0d 60%);
+        color: white;
     }
-    canvas {
-        display: block;
+
+    header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 20px 40px;
+        background: #0d1511;
+        border-bottom: 1px solid #1f3a2c;
     }
-    #startBtn {
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        padding: 15px 30px;
-        font-size: 20px;
-        background: black;
-        color: #00ff66;
-        border: 2px solid #00ff66;
-        cursor: pointer;
-        z-index: 10;
+
+    .logo {
+        font-size: 26px;
+        font-weight: bold;
+        color: #2cff88;
     }
-    #startBtn:hover {
-        background: #00ff66;
+
+    .balance {
+        background: #13221a;
+        padding: 10px 18px;
+        border-radius: 12px;
+        border: 1px solid #1f3a2c;
+        font-weight: bold;
+        color: #2cff88;
+    }
+
+    .hero {
+        text-align: center;
+        padding: 60px 20px 30px;
+    }
+
+    .hero h1 {
+        font-size: 42px;
+        color: #2cff88;
+    }
+
+    .hero p {
+        color: #aaa;
+        max-width: 600px;
+        margin: 10px auto;
+    }
+
+    .demo-badge {
+        background: #2cff88;
         color: black;
+        display: inline-block;
+        padding: 6px 14px;
+        border-radius: 20px;
+        font-weight: bold;
+        margin-bottom: 15px;
+    }
+
+    .games {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+        gap: 25px;
+        padding: 40px;
+    }
+
+    .card {
+        background: #121a16;
+        border: 1px solid #1f3a2c;
+        border-radius: 16px;
+        padding: 20px;
+        text-align: center;
+        box-shadow: 0 0 15px rgba(44,255,136,0.05);
+    }
+
+    button {
+        background: #2cff88;
+        border: none;
+        padding: 10px 18px;
+        border-radius: 8px;
+        font-weight: bold;
+        cursor: pointer;
+        margin-top: 10px;
+    }
+
+    .grid {
+        display: grid;
+        grid-template-columns: repeat(5, 40px);
+        gap: 6px;
+        justify-content: center;
+        margin-top: 10px;
+    }
+
+    .tile {
+        width: 40px;
+        height: 40px;
+        background: #1a2a22;
+        border-radius: 6px;
+        cursor: pointer;
+    }
+
+    footer {
+        text-align: center;
+        padding: 20px;
+        color: #666;
+        font-size: 14px;
     }
 </style>
 </head>
 <body>
 
-<button id="startBtn">INITIATE BREACH</button>
-<canvas id="matrix"></canvas>
+<header>
+    <div class="logo">YourBrand ★ GG</div>
+    <div class="balance">Coins: <span id="coins">500</span></div>
+</header>
+
+<section class="hero">
+    <div class="demo-badge">DEMO – NO REAL MONEY</div>
+    <h1>Play Fun Mini Games</h1>
+    <p>This is a front-end design demo with play coins only.</p>
+</section>
+
+<section class="games">
+
+    <!-- Coin Flip -->
+    <div class="card">
+        <h2>🪙 Coin Flip</h2>
+        <p id="coinResult">Press flip!</p>
+        <button onclick="flipCoin()">Flip Coin</button>
+    </div>
+
+    <!-- Mines -->
+    <div class="card">
+        <h2>💣 Mines</h2>
+        <div class="grid" id="mineGrid"></div>
+        <button onclick="resetMines()">Reset</button>
+    </div>
+
+    <!-- Crates -->
+    <div class="card">
+        <h2>📦 Crates</h2>
+        <p id="crateResult">Open a crate!</p>
+        <button onclick="openCrate()">Open</button>
+    </div>
+
+</section>
+
+<footer>
+    UI Game Demo • Not a gambling or payment platform
+</footer>
 
 <script>
-const canvas = document.getElementById("matrix");
-const ctx = canvas.getContext("2d");
+let coins = 500;
+const coinDisplay = document.getElementById("coins");
 
-canvas.width = window.innerWidth;
-canvas.height = window.innerHeight;
+function updateCoins(amount) {
+    coins += amount;
+    coinDisplay.textContent = coins;
+}
 
-// BIG character set like the Matrix vibe
-const chars =
-"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789@#$%^&*()*&^%+-/~{[|`]}";
+// Coin Flip
+function flipCoin() {
+    const win = Math.random() > 0.5;
+    document.getElementById("coinResult").textContent = win ? "You won 20 coins!" : "You lost 10 coins!";
+    updateCoins(win ? 20 : -10);
+}
 
-// Turn string into array
-const charArray = chars.split("");
+// Mines Game
+const grid = document.getElementById("mineGrid");
+let mineIndex;
 
-const fontSize = 14;
-const columns = canvas.width / fontSize;
+function resetMines() {
+    grid.innerHTML = "";
+    mineIndex = Math.floor(Math.random() * 25);
 
-// One drop per column
-const drops = Array(Math.floor(columns)).fill(1);
-
-function draw() {
-    // Slight fade for trail effect
-    ctx.fillStyle = "rgba(0, 0, 0, 0.06)";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    ctx.fillStyle = "#00ff66";
-    ctx.font = fontSize + "px monospace";
-
-    for (let i = 0; i < drops.length; i++) {
-        const text = charArray[Math.floor(Math.random() * charArray.length)];
-        ctx.fillText(text, i * fontSize, drops[i] * fontSize);
-
-        // Reset randomly to keep flow uneven
-        if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) {
-            drops[i] = 0;
-        }
-
-        drops[i]++;
+    for (let i = 0; i < 25; i++) {
+        const tile = document.createElement("div");
+        tile.classList.add("tile");
+        tile.onclick = () => revealTile(tile, i);
+        grid.appendChild(tile);
     }
 }
 
-let interval;
+function revealTile(tile, index) {
+    if (index === mineIndex) {
+        tile.style.background = "red";
+        updateCoins(-25);
+    } else {
+        tile.style.background = "#2cff88";
+        updateCoins(5);
+    }
+}
 
-document.getElementById("startBtn").onclick = () => {
-    document.getElementById("startBtn").style.display = "none";
-    if (!interval) interval = setInterval(draw, 30);
-};
+// Crates
+function openCrate() {
+    const reward = Math.floor(Math.random() * 50) + 10;
+    document.getElementById("crateResult").textContent = "You found " + reward + " coins!";
+    updateCoins(reward);
+}
 
-window.addEventListener("resize", () => {
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-});
+resetMines();
 </script>
 
 </body>
