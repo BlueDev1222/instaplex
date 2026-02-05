@@ -2,163 +2,195 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Market Tracker Pro</title>
+
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://s3.tradingview.com/tv.js"></script>
 
 <style>
+:root {
+    --bg: #020617;
+    --card: #0f172a;
+    --accent: #38bdf8;
+    --text: #e5e7eb;
+}
+
 body {
-    background: #020617;
-    color: #e5e7eb;
-    font-family: Arial, sans-serif;
     margin: 0;
-    padding: 20px;
+    background: var(--bg);
+    color: var(--text);
+    font-family: Arial, sans-serif;
 }
 
 .container {
     max-width: 900px;
     margin: auto;
+    padding: 15px;
 }
 
 h1 {
     text-align: center;
-    color: #38bdf8;
+    color: var(--accent);
 }
 
 .controls {
     display: flex;
-    gap: 10px;
-    margin-bottom: 15px;
+    gap: 8px;
+    margin-bottom: 10px;
 }
 
-input, button {
+.controls input {
+    flex: 1;
     padding: 10px;
     border-radius: 6px;
     border: none;
-}
-
-input {
-    flex: 1;
-    background: #0f172a;
+    background: var(--card);
     color: white;
 }
 
-button {
-    background: #38bdf8;
+.controls button {
+    padding: 10px;
+    border-radius: 6px;
+    border: none;
+    background: var(--accent);
     font-weight: bold;
-    cursor: pointer;
-}
-
-button:hover {
-    background: #0ea5e9;
 }
 
 .watchlist {
-    margin-top: 20px;
+    margin-top: 10px;
 }
 
 .item {
-    background: #0f172a;
+    background: var(--card);
     padding: 10px;
     border-radius: 8px;
-    margin-bottom: 8px;
+    margin-bottom: 6px;
     display: flex;
     justify-content: space-between;
+    cursor: pointer;
 }
 
-.up { color: #22c55e; }
-.down { color: #ef4444; }
+.timeframes {
+    display: flex;
+    gap: 6px;
+    margin: 10px 0;
+}
+
+.timeframes button {
+    flex: 1;
+    padding: 8px;
+    border-radius: 6px;
+    border: none;
+    background: var(--card);
+    color: white;
+}
+
+.timeframes button.active {
+    background: var(--accent);
+    color: black;
+}
 
 canvas {
-    background: #020617;
-    margin-top: 20px;
+    background: var(--bg);
     border-radius: 10px;
+}
+
+#tv {
+    height: 420px;
+    margin-top: 15px;
+}
+
+/* 📱 Mobile tweaks */
+@media (max-width: 600px) {
+    #tv { height: 360px; }
 }
 </style>
 </head>
 
 <body>
 <div class="container">
-    <h1>📈 Market Tracker Pro</h1>
+    <h1>📊 Market Tracker Pro</h1>
 
     <div class="controls">
-        <input id="symbol" placeholder="AAPL, TSLA, BTC, ETH">
-        <button onclick="addToWatchlist()">Add</button>
+        <input id="symbol" placeholder="AAPL, TSLA, BTC">
+        <button onclick="add()">Add</button>
     </div>
 
     <div class="watchlist" id="watchlist"></div>
 
+    <div class="timeframes">
+        <button onclick="loadHistory('1D')" class="active">1D</button>
+        <button onclick="loadHistory('1W')">1W</button>
+        <button onclick="loadHistory('1M')">1M</button>
+    </div>
+
     <canvas id="chart" height="120"></canvas>
+
+    <div id="tv"></div>
 </div>
 
 <script>
 const API_KEY = "3UF0NYK6IEGTIA3Z";
-const watchlist = [];
+let watchlist = JSON.parse(localStorage.getItem("watchlist")) || [];
+let selected = null;
 let chart;
 
-function isCrypto(symbol) {
-    return ["BTC","ETH","SOL","DOGE"].includes(symbol);
+function save() {
+    localStorage.setItem("watchlist", JSON.stringify(watchlist));
 }
 
-async function fetchStock(symbol) {
-    const res = await fetch(
-        `https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${symbol}&apikey=${API_KEY}`
-    );
-    const data = await res.json();
-    return parseFloat(data["Global Quote"]["05. price"]);
+function isCrypto(s) {
+    return ["BTC","ETH","SOL","DOGE"].includes(s);
 }
 
-async function fetchCrypto(symbol) {
-    const idMap = { BTC: "bitcoin", ETH: "ethereum", SOL: "solana", DOGE: "dogecoin" };
-    const res = await fetch(
-        `https://api.coingecko.com/api/v3/simple/price?ids=${idMap[symbol]}&vs_currencies=usd`
-    );
-    const data = await res.json();
-    return data[idMap[symbol]].usd;
+function add() {
+    const s = document.getElementById("symbol").value.toUpperCase();
+    if (!s || watchlist.includes(s)) return;
+    watchlist.push(s);
+    save();
+    render();
 }
 
-async function addToWatchlist() {
-    const symbol = document.getElementById("symbol").value.toUpperCase();
-    if (!symbol || watchlist.includes(symbol)) return;
+function render() {
+    const w = document.getElementById("watchlist");
+    w.innerHTML = "";
+    watchlist.forEach(s => {
+        const d = document.createElement("div");
+        d.className = "item";
+        d.innerHTML = `<strong>${s}</strong>`;
+        d.onclick = () => selectSymbol(s);
+        w.appendChild(d);
+    });
+}
+render();
 
-    watchlist.push(symbol);
-    document.getElementById("symbol").value = "";
-    updateWatchlist();
+function selectSymbol(s) {
+    selected = s;
+    loadHistory("1D");
+    loadTradingView(s);
 }
 
-async function updateWatchlist() {
-    const container = document.getElementById("watchlist");
-    container.innerHTML = "";
+async function loadHistory(tf) {
+    document.querySelectorAll(".timeframes button").forEach(b => b.classList.remove("active"));
+    event.target.classList.add("active");
 
-    for (let symbol of watchlist) {
-        let price = isCrypto(symbol)
-            ? await fetchCrypto(symbol)
-            : await fetchStock(symbol);
-
-        const div = document.createElement("div");
-        div.className = "item";
-        div.innerHTML = `<strong>${symbol}</strong><span>$${price.toFixed(2)}</span>`;
-        div.onclick = () => loadChart(symbol);
-        container.appendChild(div);
-    }
-}
-
-async function loadChart(symbol) {
-    let prices = [];
+    let points = tf === "1D" ? 24 : tf === "1W" ? 7 : 30;
     let labels = [];
+    let prices = [];
 
-    for (let i = 10; i >= 0; i--) {
-        prices.push(Math.random() * 5 + 95);
-        labels.push(`${i}m`);
+    for (let i = points; i > 0; i--) {
+        labels.push(i);
+        prices.push(Math.random() * 5 + 100); // demo smoothing
     }
 
     if (chart) chart.destroy();
-
     chart = new Chart(document.getElementById("chart"), {
         type: "line",
         data: {
             labels,
             datasets: [{
-                label: symbol,
+                label: selected,
                 data: prices,
                 borderWidth: 2,
                 tension: 0.4
@@ -174,8 +206,19 @@ async function loadChart(symbol) {
     });
 }
 
-// 🔄 Live Auto Refresh (every 30s)
-setInterval(updateWatchlist, 30000);
+function loadTradingView(symbol) {
+    document.getElementById("tv").innerHTML = "";
+    new TradingView.widget({
+        container_id: "tv",
+        symbol: isCrypto(symbol) ? `BINANCE:${symbol}USDT` : symbol,
+        interval: "30",
+        theme: "dark",
+        style: "1",
+        locale: "en",
+        autosize: true,
+        hide_side_toolbar: false
+    });
+}
 </script>
 </body>
 </html>
