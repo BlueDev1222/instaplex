@@ -140,6 +140,10 @@ canvas {
     font-size: 13px;
     color: #94a3b8;
 }
+
+@media (max-width: 600px) {
+    #tv { height: 360px; }
+}
 </style>
 </head>
 
@@ -147,6 +151,7 @@ canvas {
 <div class="container">
 <h1>🌌 Nebula Market</h1>
 
+<!-- Market Controls -->
 <div class="controls">
     <input id="symbol" placeholder="AAPL, TSLA, BTC">
     <button onclick="add()">Add</button>
@@ -203,6 +208,7 @@ function add() {
     render();
 }
 
+const watchlistEl = document.getElementById("watchlist");
 function render() {
     watchlistEl.innerHTML = "";
     watchlist.forEach(s => {
@@ -213,7 +219,6 @@ function render() {
         watchlistEl.appendChild(d);
     });
 }
-const watchlistEl = document.getElementById("watchlist");
 render();
 
 function selectSymbol(s) {
@@ -269,49 +274,92 @@ function clearAI() {
     aiStatus.classList.remove("active");
 }
 
-function runAI() {
-    aiStatus.textContent = `AI recalculating trajectory for ${selected || "asset"}…`;
+async function runAI() {
+    if (!selected) {
+        aiStatus.textContent = "No asset selected";
+        return;
+    }
+
+    aiStatus.textContent = "Scanning historical data…";
     aiStatus.classList.add("active");
-    clearAI();
+    ctx.clearRect(0, 0, aiCanvas.width, aiCanvas.height);
 
-    setTimeout(() => {
-        aiStatus.classList.remove("active");
-        drawTrajectory();
-        aiStatus.textContent = `Trajectory projected (${selected || "unknown"})`;
-    }, 1200);
+    try {
+        const prices = await fetchPrices(selected);
+        aiStatus.textContent = "Running trajectory model…";
+
+        const model = regression(prices);
+        drawTrajectory(model, prices);
+
+        aiStatus.textContent =
+            `Projected • Confidence: ${Math.round(model.confidence)}%`;
+
+    } catch (e) {
+        console.error(e);
+        aiStatus.textContent = "Data scan failed";
+    }
+
+    aiStatus.classList.remove("active");
 }
 
-function drawTrajectory() {
-    let seed = selected ? selected.charCodeAt(0) : 65;
-    let x = aiCanvas.width * 0.15;
-    let y = aiCanvas.height * 0.75;
+/* ===== REAL DATA SCAN ===== */
+async function fetchPrices(symbol) {
+    const isCrypto = ["BTC","ETH","SOL","DOGE"].includes(symbol);
+    const url = isCrypto
+        ? `https://www.alphavantage.co/query?function=DIGITAL_CURRENCY_DAILY&symbol=${symbol}&market=USD&apikey=3UF0NYK6IEGTIA3Z`
+        : `https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol=${symbol}&apikey=3UF0NYK6IEGTIA3Z`;
 
+    const res = await fetch(url);
+    const data = await res.json();
+
+    const series = data["Time Series (Daily)"] || data["Time Series (Digital Currency Daily)"];
+    const values = Object.values(series).slice(0, 30).reverse();
+
+    return values.map(v => parseFloat(v["4. close"] || v["4a. close (USD)"]));
+}
+
+/* ===== REGRESSION MODEL ===== */
+function regression(data) {
+    const n = data.length;
+    let sumX = 0, sumY = 0, sumXY = 0, sumXX = 0;
+
+    data.forEach((y, x) => {
+        sumX += x;
+        sumY += y;
+        sumXY += x * y;
+        sumXX += x * x;
+    });
+
+    const slope = (n * sumXY - sumX * sumY) / (n * sumXX - sumX ** 2);
+    const intercept = (sumY - slope * sumX) / n;
+
+    let error = 0;
+    data.forEach((y, x) => {
+        const yHat = slope * x + intercept;
+        error += Math.abs(y - yHat);
+    });
+
+    const confidence = Math.max(5, 100 - (error / n));
+    return { slope, intercept, confidence };
+}
+
+/* ===== DRAW TRAJECTORY ===== */
+function drawTrajectory(model, prices) {
     ctx.lineWidth = 2;
-
-    ctx.strokeStyle = "rgba(56,189,248,0.15)";
-    for (let i = 0; i < 6; i++) path(x, y, seed, true);
-
     ctx.strokeStyle = "#38bdf8";
-    path(x, y, seed, false);
-}
 
-function path(x, y, seed, noise) {
+    const scaleX = aiCanvas.width / 40;
+    const min = Math.min(...prices);
+    const max = Math.max(...prices);
+    const scaleY = aiCanvas.height / (max - min);
+
     ctx.beginPath();
-    ctx.moveTo(x, y);
-
-    let vx = 5 + seed % 3;
-    let vy = -7 - seed % 4;
-    let g = 0.35;
-
-    for (let i = 0; i < 60; i++) {
-        if (noise) {
-            vx += (Math.random() - 0.5) * 0.4;
-            vy += (Math.random() - 0.5) * 0.4;
-        }
-        x += vx;
-        y += vy;
-        vy += g;
-        ctx.lineTo(x, y);
+    for (let x = 0; x < 40; x++) {
+        const yVal = model.slope * x + model.intercept;
+        const y = aiCanvas.height - (yVal - min) * scaleY;
+        const px = x * scaleX;
+        if (x === 0) ctx.moveTo(px, y);
+        else ctx.lineTo(px, y);
     }
     ctx.stroke();
 }
