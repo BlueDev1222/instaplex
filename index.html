@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Market Tracker Pro</title>
+<title>Nebula Market</title>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://s3.tradingview.com/tv.js"></script>
@@ -101,6 +101,15 @@ canvas {
     margin-top: 15px;
 }
 
+/* Footer */
+.footer {
+    text-align: center;
+    margin-top: 20px;
+    padding: 10px;
+    font-size: 13px;
+    color: #94a3b8;
+}
+
 /* 📱 Mobile tweaks */
 @media (max-width: 600px) {
     #tv { height: 360px; }
@@ -110,7 +119,7 @@ canvas {
 
 <body>
 <div class="container">
-    <h1>📊 Market Tracker Pro</h1>
+    <h1>🌌 Nebula Market</h1>
 
     <div class="controls">
         <input id="symbol" placeholder="AAPL, TSLA, BTC">
@@ -128,9 +137,15 @@ canvas {
     <canvas id="chart" height="120"></canvas>
 
     <div id="tv"></div>
+
+    <div class="footer">
+        © <span id="year"></span> Nebula Market. All rights reserved.
+    </div>
 </div>
 
 <script>
+document.getElementById("year").textContent = new Date().getFullYear();
+
 const API_KEY = "3UF0NYK6IEGTIA3Z";
 let watchlist = JSON.parse(localStorage.getItem("watchlist")) || [];
 let selected = null;
@@ -181,7 +196,7 @@ async function loadHistory(tf) {
 
     for (let i = points; i > 0; i--) {
         labels.push(i);
-        prices.push(Math.random() * 5 + 100); // demo smoothing
+        prices.push(Math.random() * 5 + 100);
     }
 
     if (chart) chart.destroy();
