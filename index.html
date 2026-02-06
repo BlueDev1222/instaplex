@@ -35,36 +35,31 @@ h1, h2 {
     color: var(--accent);
 }
 
-.controls {
+.controls, .ai-controls {
     display: flex;
     gap: 8px;
     margin-bottom: 10px;
 }
 
-.controls input {
-    flex: 1;
+input, button {
     padding: 10px;
     border-radius: 6px;
     border: none;
+}
+
+input {
+    flex: 1;
     background: var(--card);
     color: white;
 }
 
-.controls button,
 button {
-    padding: 10px;
-    border-radius: 6px;
-    border: none;
     background: var(--accent);
     font-weight: bold;
     cursor: pointer;
 }
 
-.watchlist {
-    margin-top: 10px;
-}
-
-.item {
+.watchlist .item {
     background: var(--card);
     padding: 10px;
     border-radius: 8px;
@@ -79,7 +74,6 @@ button {
 }
 
 .timeframes button {
-    flex: 1;
     background: var(--card);
     color: white;
 }
@@ -90,7 +84,6 @@ button {
 }
 
 canvas {
-    background: var(--bg);
     border-radius: 10px;
 }
 
@@ -100,7 +93,6 @@ canvas {
 }
 
 /* ===== AI SECTION ===== */
-
 .ai-section {
     margin-top: 40px;
     background: var(--card);
@@ -109,7 +101,7 @@ canvas {
 }
 
 .warning {
-    background: rgba(250, 204, 21, 0.1);
+    background: rgba(250,204,21,0.1);
     border: 1px solid var(--warn);
     color: var(--warn);
     padding: 10px;
@@ -118,150 +110,151 @@ canvas {
     margin-bottom: 10px;
 }
 
-.ai-controls {
-    display: flex;
-    gap: 10px;
-    margin-bottom: 10px;
+.ai-status {
+    font-size: 13px;
+    color: #94a3b8;
+    height: 18px;
+    margin-bottom: 6px;
+}
+
+.ai-status.active::after {
+    content: " ▓▒░";
+    animation: dots 1.2s infinite;
+}
+
+@keyframes dots {
+    0% { content: " ░"; }
+    50% { content: " ▓▒"; }
+    100% { content: " ▓▒░"; }
 }
 
 #aiCanvas {
     width: 100%;
-    height: 380px;
+    height: 360px;
+    background: radial-gradient(circle at top, #020617, #000);
 }
 
-/* Footer */
 .footer {
     text-align: center;
     margin-top: 25px;
     font-size: 13px;
     color: #94a3b8;
 }
-
-@media (max-width: 600px) {
-    #tv { height: 360px; }
-}
 </style>
 </head>
 
 <body>
 <div class="container">
-    <h1>🌌 Nebula Market</h1>
+<h1>🌌 Nebula Market</h1>
 
-    <!-- Market Controls -->
-    <div class="controls">
-        <input id="symbol" placeholder="AAPL, TSLA, BTC">
-        <button onclick="add()">Add</button>
+<div class="controls">
+    <input id="symbol" placeholder="AAPL, TSLA, BTC">
+    <button onclick="add()">Add</button>
+</div>
+
+<div class="watchlist" id="watchlist"></div>
+
+<div class="timeframes">
+    <button onclick="loadHistory('1D')" class="active">1D</button>
+    <button onclick="loadHistory('1W')">1W</button>
+    <button onclick="loadHistory('1M')">1M</button>
+</div>
+
+<canvas id="chart" height="120"></canvas>
+<div id="tv"></div>
+
+<!-- AI SECTION -->
+<div class="ai-section">
+    <h2>🤖 AI Trajectory Projector</h2>
+
+    <div class="warning">
+        ⚠️ AI-generated projection. Results may be inaccurate or misleading.
+        Visualization only.
     </div>
 
-    <div class="watchlist" id="watchlist"></div>
+    <div class="ai-status" id="aiStatus">Idle</div>
 
-    <div class="timeframes">
-        <button onclick="loadHistory('1D')" class="active">1D</button>
-        <button onclick="loadHistory('1W')">1W</button>
-        <button onclick="loadHistory('1M')">1M</button>
+    <div class="ai-controls">
+        <button onclick="runAI()">Recalculate</button>
+        <button onclick="clearAI()">Clear</button>
     </div>
 
-    <canvas id="chart" height="120"></canvas>
-    <div id="tv"></div>
+    <canvas id="aiCanvas"></canvas>
+</div>
 
-    <!-- ===== AI TRAJECTORY PROJECTOR ===== -->
-    <div class="ai-section">
-        <h2>🤖 AI Trajectory Projector</h2>
-
-        <div class="warning">
-            ⚠️ AI-generated projection. Results may be inaccurate, incomplete,
-            or misleading. For visualization only.
-        </div>
-
-        <div class="ai-controls">
-            <button onclick="project()">Project Trajectory</button>
-            <button onclick="clearAI()">Clear</button>
-        </div>
-
-        <canvas id="aiCanvas"></canvas>
-    </div>
-
-    <div class="footer">
-        © <span id="year"></span> Nebula Market. All rights reserved.
-    </div>
+<div class="footer">
+    © <span id="year"></span> Nebula Market. All rights reserved.
+</div>
 </div>
 
 <script>
 document.getElementById("year").textContent = new Date().getFullYear();
 
-/* ===== MARKET LOGIC ===== */
+/* ===== MARKET ===== */
 let watchlist = JSON.parse(localStorage.getItem("watchlist")) || [];
 let selected = null;
 let chart;
 
-function save() {
-    localStorage.setItem("watchlist", JSON.stringify(watchlist));
-}
-
-function isCrypto(s) {
-    return ["BTC","ETH","SOL","DOGE"].includes(s);
-}
-
 function add() {
-    const s = document.getElementById("symbol").value.toUpperCase();
+    const s = symbol.value.toUpperCase();
     if (!s || watchlist.includes(s)) return;
     watchlist.push(s);
-    save();
+    localStorage.setItem("watchlist", JSON.stringify(watchlist));
     render();
 }
 
 function render() {
-    const w = document.getElementById("watchlist");
-    w.innerHTML = "";
+    watchlistEl.innerHTML = "";
     watchlist.forEach(s => {
         const d = document.createElement("div");
         d.className = "item";
         d.textContent = s;
         d.onclick = () => selectSymbol(s);
-        w.appendChild(d);
+        watchlistEl.appendChild(d);
     });
 }
+const watchlistEl = document.getElementById("watchlist");
 render();
 
 function selectSymbol(s) {
     selected = s;
-    loadHistory("1D");
     loadTradingView(s);
+    runAI(); // 🔗 SYNC TO AI
 }
 
 function loadHistory(tf) {
     document.querySelectorAll(".timeframes button").forEach(b => b.classList.remove("active"));
     event.target.classList.add("active");
 
-    let points = tf === "1D" ? 24 : tf === "1W" ? 7 : 30;
-    let labels = [], prices = [];
-
-    for (let i = points; i > 0; i--) {
-        labels.push(i);
-        prices.push(Math.random() * 5 + 100);
-    }
+    const labels = Array.from({length: 20}, (_, i) => i);
+    const prices = labels.map(() => Math.random() * 5 + 100);
 
     if (chart) chart.destroy();
-    chart = new Chart(document.getElementById("chart"), {
+    chart = new Chart(chartEl, {
         type: "line",
         data: { labels, datasets: [{ label: selected, data: prices, tension: 0.4 }] }
     });
 }
 
 function loadTradingView(symbol) {
-    document.getElementById("tv").innerHTML = "";
+    tv.innerHTML = "";
     new TradingView.widget({
         container_id: "tv",
-        symbol: isCrypto(symbol) ? `BINANCE:${symbol}USDT` : symbol,
-        interval: "30",
+        symbol: ["BTC","ETH","SOL","DOGE"].includes(symbol)
+            ? `BINANCE:${symbol}USDT`
+            : symbol,
         theme: "dark",
         autosize: true
     });
 }
 
+const chartEl = document.getElementById("chart");
+const tv = document.getElementById("tv");
+
 /* ===== AI TRAJECTORY ===== */
 const aiCanvas = document.getElementById("aiCanvas");
 const ctx = aiCanvas.getContext("2d");
+const aiStatus = document.getElementById("aiStatus");
 
 function resizeAI() {
     aiCanvas.width = aiCanvas.offsetWidth;
@@ -272,28 +265,43 @@ resizeAI();
 
 function clearAI() {
     ctx.clearRect(0, 0, aiCanvas.width, aiCanvas.height);
+    aiStatus.textContent = "Idle";
+    aiStatus.classList.remove("active");
 }
 
-function project() {
+function runAI() {
+    aiStatus.textContent = `AI recalculating trajectory for ${selected || "asset"}…`;
+    aiStatus.classList.add("active");
     clearAI();
 
-    const sx = aiCanvas.width * 0.15;
-    const sy = aiCanvas.height * 0.75;
+    setTimeout(() => {
+        aiStatus.classList.remove("active");
+        drawTrajectory();
+        aiStatus.textContent = `Trajectory projected (${selected || "unknown"})`;
+    }, 1200);
+}
+
+function drawTrajectory() {
+    let seed = selected ? selected.charCodeAt(0) : 65;
+    let x = aiCanvas.width * 0.15;
+    let y = aiCanvas.height * 0.75;
 
     ctx.lineWidth = 2;
 
     ctx.strokeStyle = "rgba(56,189,248,0.15)";
-    for (let i = 0; i < 7; i++) drawPath(sx, sy, true);
+    for (let i = 0; i < 6; i++) path(x, y, seed, true);
 
     ctx.strokeStyle = "#38bdf8";
-    drawPath(sx, sy, false);
+    path(x, y, seed, false);
 }
 
-function drawPath(x, y, noise) {
+function path(x, y, seed, noise) {
     ctx.beginPath();
     ctx.moveTo(x, y);
 
-    let vx = 6, vy = -8, g = 0.35;
+    let vx = 5 + seed % 3;
+    let vy = -7 - seed % 4;
+    let g = 0.35;
 
     for (let i = 0; i < 60; i++) {
         if (noise) {
