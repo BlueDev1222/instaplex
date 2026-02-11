@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Domain Owned by Peakframe Studios</title>
+
+<style>
+    :root {
+        --bg: #020617;
+        --card: #0f172a;
+        --text: #e5e7eb;
+        --muted: #94a3b8;
+        --accent: #38bdf8;
+    }
+
+    * {
+        box-sizing: border-box;
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    body {
+        margin: 0;
+        min-height: 100vh;
+        background: radial-gradient(1200px 600px at top, #020617, #000);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--text);
+    }
+
+    .card {
+        background: linear-gradient(180deg, var(--card), #020617);
+        border: 1px solid #1e293b;
+        border-radius: 16px;
+        padding: 40px;
+        max-width: 520px;
+        width: 90%;
+        text-align: center;
+        box-shadow: 0 30px 80px rgba(0,0,0,0.6);
+    }
+
+    h1 {
+        margin: 0 0 12px;
+        font-size: 1.9rem;
+        letter-spacing: 0.3px;
+    }
+
+    .accent {
+        color: var(--accent);
+    }
+
+    p {
+        margin: 0;
+        font-size: 1rem;
+        color: var(--muted);
+        line-height: 1.6;
+    }
+
+    .divider {
+        margin: 28px auto;
+        width: 60px;
+        height: 3px;
+        background: linear-gradient(90deg, transparent, var(--accent), transparent);
+        border-radius: 999px;
+    }
+
+    footer {
+        margin-top: 18px;
+        font-size: 0.85rem;
+        color: #64748b;
+    }
+</style>
+</head>
+<body>
+
+<div class="card">
+    <h1>This domain is owned by <span class="accent">Peakframe Studios</span></h1>
+
+    <div class="divider"></div>
+
+    <p>
+        This website is currently reserved and managed by Peakframe Studios.<br>
+        Content, services, or projects may appear here in the future.
+    </p>
+
+    <footer>
+        © <span id="year"></span> Peakframe Studios. All rights reserved.
+    </footer>
+</div>
+
+<script>
+    document.getElementById("year").textContent = new Date().getFullYear();
+</script>
+
+</body>
+</html>
